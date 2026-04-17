@@ -1,6 +1,32 @@
 import mongoose from "mongoose";
 import { generateSKU } from "../utils/skuGenerator.js";
 
+// ─── IMAGE SUB-SCHEMA ─────────────────────────────────────────────────────────
+const imageSchema = new mongoose.Schema(
+  {
+    url: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    public_id: {
+      type: String,
+      required: true,
+    },
+    altText: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    isPrimary: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { _id: true }
+);
+
+// ─── MAIN PRODUCT SCHEMA ─────────────────────────────────────────────────────
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -62,6 +88,18 @@ const productSchema = new mongoose.Schema(
       },
     },
 
+
+    images: {
+      type: [imageSchema],
+      default: [],
+      validate: {
+        validator: function (arr) {
+          return arr.length <= 5;
+        },
+        message: "A product cannot have more than 5 images",
+      },
+    },
+
     isActive: {
       type: Boolean,
       default: true,
@@ -70,22 +108,50 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ─── PRE-SAVE HOOK ────────────────────────────────────────────────────────────
-productSchema.pre("save", async function (next) {
-  if (this.sku) return next(); // skip if manually provided or already set
-  try {
-    this.sku = await generateSKU(this.name, this.category);
-    next();
-  } catch (err) {
-    next(err);
+
+// ─── PRE-SAVE HOOKS ───────────────────────────────────────────────────────────
+
+// ─── PRE-SAVE HOOKS ───────────────────────────────────────────────────────────
+
+// ✅ Validate sellingPrice >= costPrice
+productSchema.pre("save", async function () {
+  if (!this.price) return;
+
+  const costPrice = Number(this.price.costPrice);
+  const sellingPrice = Number(this.price.sellingPrice);
+
+  if (Number.isNaN(costPrice) || Number.isNaN(sellingPrice)) {
+    throw new Error("Invalid price values");
   }
+
+  if (sellingPrice < costPrice) {
+    throw new Error("Selling price must be greater than or equal to cost price");
+  }
+});
+
+// ✅ Auto-generate SKU if not provided
+productSchema.pre("save", async function () {
+  if (this.sku) return;
+  this.sku = await generateSKU(this.name, this.category);
+});
+
+// ✅ Ensure exactly one primary image
+productSchema.pre("save", async function () {
+  if (!Array.isArray(this.images) || this.images.length === 0) return;
+
+  const primaryIndex = this.images.findIndex((img) => img.isPrimary);
+  const targetIndex = primaryIndex === -1 ? 0 : primaryIndex;
+
+  this.images.forEach((img, i) => {
+    img.isPrimary = i === targetIndex;
+  });
 });
 
 // ─── VIRTUALS ─────────────────────────────────────────────────────────────────
 productSchema.virtual("profitMargin").get(function () {
   const { costPrice, sellingPrice } = this.price;
   if (!costPrice || costPrice === 0) return 0;
-  return (((sellingPrice - costPrice) / costPrice) * 100).toFixed(2);
+  return Number((((sellingPrice - costPrice) / costPrice) * 100).toFixed(2));
 });
 
 productSchema.virtual("isLowStock").get(function () {
@@ -94,6 +160,12 @@ productSchema.virtual("isLowStock").get(function () {
 
 productSchema.virtual("isOverStock").get(function () {
   return this.stock.quantity >= this.stock.lowStockThreshold * 5;
+});
+
+// Returns the primary image URL directly — no lookup needed in controllers
+productSchema.virtual("primaryImage").get(function () {
+  if (!this.images?.length) return null;
+  return this.images.find((img) => img.isPrimary)?.url ?? this.images[0].url;
 });
 
 // ─── INDEXES ──────────────────────────────────────────────────────────────────

@@ -26,8 +26,6 @@ categorySchema.virtual("productCount", {
   count: true, // returns a number instead of full documents
 });
 
-categorySchema.index({ name: 1 });
-
 categorySchema.set("toJSON", { virtuals: true });
 categorySchema.set("toObject", { virtuals: true });
 

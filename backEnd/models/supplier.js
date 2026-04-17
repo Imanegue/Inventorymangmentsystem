@@ -14,12 +14,14 @@ const supplierSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"],
+      unique: true,
     },
 
     phone: {
       type: String,
       trim: true,
       maxlength: [20, "Phone number cannot exceed 20 characters"],
+      unique: true,
     },
 
     address: {
@@ -50,6 +52,7 @@ supplierSchema.virtual("products", {
 });
 
 supplierSchema.index({ name: "text", email: "text" });
+supplierSchema.index({ email: 1 }, { unique: true, sparse: true });
 supplierSchema.index({ isActive: 1 });
 
 supplierSchema.set("toJSON", { virtuals: true });
