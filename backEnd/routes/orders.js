@@ -17,11 +17,11 @@ router.post("/orders", createorder);
 router.get("/orders", getorders);
 // get single order
 router.get("/orders/:id", getorder);
-// update order (only pending)
+// update order 
 router.put("/orders/:id", updateorder);
 // mark order as received + update stock
 router.patch("/orders/:id/receive", receiveorder);
-// delete order (only pending)
+// delete order 
 router.delete("/orders/:id", deleteorder);
 
 export default router;
