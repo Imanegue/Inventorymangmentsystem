@@ -67,12 +67,6 @@ const saleSchema = new mongoose.Schema(
       default: "completed",
     },
 
-    createdBy: {
-      // reference to the admin/owner who made the sale
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
   },
   {
     timestamps: true,

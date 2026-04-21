@@ -49,6 +49,12 @@ const productSchema = new mongoose.Schema(
       maxlength: [500, "Description cannot exceed 500 characters"],
     },
 
+    brand: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Brand",
+      default: null,
+    },
+
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
@@ -170,6 +176,7 @@ productSchema.virtual("primaryImage").get(function () {
 
 // ─── INDEXES ──────────────────────────────────────────────────────────────────
 productSchema.index({ name: "text", sku: "text" });
+productSchema.index({ brand: 1 });
 productSchema.index({ category: 1 });
 productSchema.index({ "stock.quantity": 1 });
 productSchema.index({ isActive: 1 });
