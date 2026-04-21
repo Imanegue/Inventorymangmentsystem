@@ -3,8 +3,10 @@ import cors from "cors";
 import { errorHandler } from "./middleware/errorHandler.js";
 import orderRoutes from "./routes/orders.js";
 import productRoutes from "./routes/productRoutes.js";
+import brandRoutes from "./routes/brandRoutes.js";
+import categoryRoutes from "./routes/categoryRoutes.js";
 import supplierRoutes from "./routes/supplierRoutes.js";
-import categoryRoutes from "./routes/categories.js";
+import saleRoutes from "./routes/saleRoutes.js";
 
 const app = express();
 
@@ -14,8 +16,10 @@ app.use(express.json());
 
 // ─── ROUTES ───────────────────────────────────
 app.use("/api/products", productRoutes);
+app.use("/api/brands", brandRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/suppliers", supplierRoutes);
+app.use("/api/sales", saleRoutes);
 app.use("/api/order", orderRoutes);
 
 
@@ -30,3 +34,4 @@ app.use((req, res, next) => {
 app.use(errorHandler);
 
 export default app;
+
