@@ -32,7 +32,7 @@ export const protect = async (req, res, next) => {
     }
 
     req.user = user;
-    next(); // ← Make sure this is here
+    next(); 
   } catch (error) {
     console.error("Auth error:", error);
     return res.status(401).json({
