@@ -1,6 +1,7 @@
 import Product from "../models/Product.js";
 import Category from "../models/Category.js";
 import Supplier from "../models/Supplier.js";
+import Brand from "../models/Brand.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { deleteFromCloudinary } from "../utils/cloudinaryHelper.js";
 
@@ -23,6 +24,7 @@ export const getProducts = asyncHandler(async (req, res) => {
   const {
     search,
     category,
+    brand,        
     isActive,
     lowStock,
     page = 1,
@@ -31,13 +33,12 @@ export const getProducts = asyncHandler(async (req, res) => {
 
   const filter = {};
 
-  if (search) filter.$text = { $search: search };
+  if (search)   filter.$text    = { $search: search };
   if (category) filter.category = category;
+  if (brand)    filter.brand    = brand;              
 
-  // ── isActive filter ──────────────────────────────────────────────────────────
   filter.isActive = isActive !== undefined ? isActive === "true" : true;
 
-  // ── lowStock filter at DB level, not in-memory ───────────────────────
   if (lowStock === "true") {
     filter.$expr = { $lte: ["$stock.quantity", "$stock.lowStockThreshold"] };
   }
@@ -48,6 +49,7 @@ export const getProducts = asyncHandler(async (req, res) => {
     Product.find(filter)
       .populate("category", "name")
       .populate("supplier", "name")
+      .populate("brand", "name logo")  
       .skip(skip)
       .limit(Number(limit))
       .sort({ createdAt: -1 }),
@@ -73,7 +75,8 @@ export const getProducts = asyncHandler(async (req, res) => {
 export const getProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id)
     .populate("category", "name")
-    .populate("supplier", "name");
+    .populate("supplier", "name")
+    .populate("brand", "name logo");  
 
   if (!product) {
     const error = new Error("Product not found");
@@ -93,16 +96,14 @@ export const getProduct = asyncHandler(async (req, res) => {
 //======================================================================================
 
 export const createProduct = asyncHandler(async (req, res) => {
-  // ── track uploaded public_ids for cleanup on failure ─────────────────
   const uploadedPublicIds = [];
 
   try {
-    // ── safe parse price and stock ──────────────────────────────────────
     const rawPrice = parseField(req.body.price);
     const rawStock = parseField(req.body.stock);
 
     const price = {
-      costPrice:  Number(rawPrice.costPrice),
+      costPrice:    Number(rawPrice.costPrice),
       sellingPrice: Number(rawPrice.sellingPrice),
     };
 
@@ -111,7 +112,6 @@ export const createProduct = asyncHandler(async (req, res) => {
       lowStockThreshold: Number(rawStock.lowStockThreshold ?? 10),
     };
 
-    // ── Validate price and stock ─────────────────────────────────────────────────
     if (!price.costPrice || !price.sellingPrice) {
       const error = new Error("Invalid price values");
       error.statusCode = 400;
@@ -142,16 +142,26 @@ export const createProduct = asyncHandler(async (req, res) => {
       }
     }
 
-    // ── CloudinaryStorage already uploads — read path & filename directly ─
+    // ── Validate brand (optional) ─────────────────────────────────────────────── 
+    if (req.body.brand) {
+      const brandExists = await Brand.findById(req.body.brand);
+      if (!brandExists) {
+        const error = new Error("Brand not found");
+        error.statusCode = 400;
+        throw error;
+      }
+    }
+
+    // ── Images ───────────────────────────────────────────────────────────────────
     const imageObjects = [];
 
     if (req.files?.length) {
       req.files.forEach((file, i) => {
-        uploadedPublicIds.push(file.filename); // track for cleanup
+        uploadedPublicIds.push(file.filename);
 
         imageObjects.push({
-          url:       file.path,     // CloudinaryStorage sets this to the secure URL
-          public_id: file.filename, // and this to the public_id
+          url:       file.path,
+          public_id: file.filename,
           altText:   req.body[`altText_${i}`] ?? "",
           isPrimary: i === 0,
         });
@@ -162,18 +172,19 @@ export const createProduct = asyncHandler(async (req, res) => {
     const product = await Product.create({
       name:        req.body.name,
       description: req.body.description,
+      brand:       req.body.brand    || null,   
       category:    req.body.category,
       supplier:    req.body.supplier || null,
       price,
       stock,
       images:      imageObjects,
-      
       isActive:    req.body.isActive === "false" ? false : true,
     });
 
     const populatedProduct = await Product.findById(product._id)
       .populate("category", "name")
-      .populate("supplier", "name email");
+      .populate("supplier", "name email")
+      .populate("brand", "name logo");          
 
     res.status(201).json({
       success: true,
@@ -181,13 +192,12 @@ export const createProduct = asyncHandler(async (req, res) => {
     });
 
   } catch (err) {
-    // ── clean up any images already uploaded if creation fails ───────────
     if (uploadedPublicIds.length) {
       await Promise.allSettled(
         uploadedPublicIds.map((id) => deleteFromCloudinary(id))
       );
     }
-    throw err; 
+    throw err;
   }
 });
 
@@ -200,7 +210,6 @@ export const updateProduct = asyncHandler(async (req, res) => {
   const uploadedPublicIds = [];
 
   try {
-    // ── Find product ─────────────────────────────────────────────────────────────
     const product = await Product.findById(req.params.id);
 
     if (!product) {
@@ -209,9 +218,19 @@ export const updateProduct = asyncHandler(async (req, res) => {
       throw error;
     }
 
+    // ── Validate brand if being changed ──────────────────────────────────────── 
+    if (req.body.brand) {
+      const brandExists = await Brand.findById(req.body.brand);
+      if (!brandExists) {
+        const error = new Error("Brand not found");
+        error.statusCode = 400;
+        throw error;
+      }
+    }
+
     // ── Remove images ────────────────────────────────────────────────────────────
     const removedImages = req.body.removedImages
-      ? parseField(req.body.removedImages)   
+      ? parseField(req.body.removedImages)
       : [];
 
     if (removedImages.length) {
@@ -228,7 +247,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
       );
     }
 
-    // ── CloudinaryStorage already uploads — read path & filename directly ─
+    // ── Add new images ────────────────────────────────────────────────────────────
     if (req.files?.length) {
       const remaining = 5 - product.images.length;
 
@@ -250,18 +269,18 @@ export const updateProduct = asyncHandler(async (req, res) => {
       });
     }
 
-    // ── Update price ─────────────────────────────────────────────────
+    // ── Update price ──────────────────────────────────────────────────────────────
     if (req.body.price) {
-      const parsedPrice = parseField(req.body.price); 
+      const parsedPrice = parseField(req.body.price);
       product.price = {
         ...product.price.toObject(),
         ...parsedPrice,
       };
     }
 
-    // ── Update stock ─────────────────────────────────────────────────
+    // ── Update stock ──────────────────────────────────────────────────────────────
     if (req.body.stock) {
-      const parsedStock = parseField(req.body.stock); 
+      const parsedStock = parseField(req.body.stock);
       product.stock = {
         ...product.stock.toObject(),
         ...parsedStock,
@@ -269,12 +288,17 @@ export const updateProduct = asyncHandler(async (req, res) => {
     }
 
     // ── Update scalar fields ──────────────────────────────────────────────────────
-    const EXCLUDED = ["price", "stock", "images", "removedImages"];
-    const updatableFields = ["name", "description", "category", "supplier", "isActive"];
+    const updatableFields = [
+      "name",
+      "description",
+      "brand",      
+      "category",
+      "supplier",
+      "isActive",
+    ];
 
     for (const field of updatableFields) {
-      if (req.body[field] !== undefined && !EXCLUDED.includes(field)) {
-        // correct boolean parsing for isActive
+      if (req.body[field] !== undefined) {
         if (field === "isActive") {
           product.isActive = req.body.isActive === "false" ? false : true;
         } else {
@@ -288,6 +312,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
     await product.populate([
       { path: "category", select: "name" },
       { path: "supplier", select: "name" },
+      { path: "brand",    select: "name logo" },  
     ]);
 
     res.status(200).json({
@@ -296,7 +321,6 @@ export const updateProduct = asyncHandler(async (req, res) => {
     });
 
   } catch (err) {
-    // ── clean up new uploads if update fails mid-way ─────────────────────
     if (uploadedPublicIds.length) {
       await Promise.allSettled(
         uploadedPublicIds.map((id) => deleteFromCloudinary(id))
@@ -315,10 +339,11 @@ export const deleteProduct = asyncHandler(async (req, res) => {
   const product = await Product.findByIdAndUpdate(
     req.params.id,
     { isActive: false },
-    { new: true }          
+    { new: true }
   )
     .populate("category", "name")
-    .populate("supplier", "name");
+    .populate("supplier", "name")
+    .populate("brand", "name logo");   
 
   if (!product) {
     const error = new Error("Product not found");
@@ -333,6 +358,7 @@ export const deleteProduct = asyncHandler(async (req, res) => {
   });
 });
 
+
 //======================================================================================
 // ─ RESTORE PRODUCT ─
 //======================================================================================
@@ -344,7 +370,8 @@ export const restoreProduct = asyncHandler(async (req, res) => {
     { new: true }
   )
     .populate("category", "name")
-    .populate("supplier", "name");
+    .populate("supplier", "name")
+    .populate("brand", "name logo");   
 
   if (!product) {
     const error = new Error("Product not found");
