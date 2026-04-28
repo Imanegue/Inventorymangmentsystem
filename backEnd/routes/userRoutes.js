@@ -8,7 +8,7 @@ import {
   deleteAccount,
   getAllUsers,
   getUserById,
-} from "../controllers/authControllers.js";
+} from "../controllers/authController.js";
 import { protect, adminOnly } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
