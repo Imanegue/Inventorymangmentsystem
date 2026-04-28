@@ -41,6 +41,7 @@ const orderItemSchema = new mongoose.Schema(
 // ─── MAIN ORDER SCHEMA ────────────────────────────────────────────────────────
 const orderSchema = new mongoose.Schema(
   {
+    
     orderNumber: {
       // auto-generated e.g. "ORD-20260405-001"
       type: String,
