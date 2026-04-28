@@ -13,7 +13,6 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: [true, "Email is required"],
-      unique: true,
       trim: true,
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"],
@@ -40,23 +39,26 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ─── PRE-SAVE HOOK: hash password before storing ──────────────────────────────
-userSchema.pre("save", async function (next) {
-  // Only hash if password field was actually modified
-  if (!this.isModified("password")) return next();
+// The "Pre-Save" Hook: Your automated security check
+userSchema.pre("save", async function () {
+  // 1. Check if the password was actually changed.
+  // This prevents errors when updating 'lastLogin' or other fields.
+  if (!this.isModified("password")) return;
 
   try {
+    // 2. Generate salt and hash the password
     const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
 
-    // Record when password was changed (used in JWT validation)
+    // 3. Update the password change timestamp (only for existing users)
     if (!this.isNew) {
       this.passwordChangedAt = new Date();
     }
-
-    next();
+    
+    // No next() needed! The async function resolves and Mongoose continues.
   } catch (err) {
-    next(err);
+    // If something goes wrong, throwing the error stops the save process
+    throw err;
   }
 });
 

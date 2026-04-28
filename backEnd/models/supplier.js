@@ -14,7 +14,7 @@ const supplierSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"],
-      unique: true,
+      
     },
 
     phone: {

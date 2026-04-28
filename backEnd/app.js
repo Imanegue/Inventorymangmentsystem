@@ -1,24 +1,41 @@
 import express from "express";
 import cors from "cors";
 import { errorHandler } from "./middleware/errorHandler.js";
+import orderRoutes from "./routes/orders.js";
 import productRoutes from "./routes/productRoutes.js";
 import brandRoutes from "./routes/brandRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import supplierRoutes from "./routes/supplierRoutes.js";
+<<<<<<< HEAD
+import userRoutes from "./routes/userRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
+import aiInsights from "./routes/aiRoutes.js";
+=======
 import saleRoutes from "./routes/saleRoutes.js";
+>>>>>>> abc9e3e88e4ae3af64da628f0685d5d49ac4ca3c
 
 const app = express();
+
 
 // ─── CORE MIDDLEWARES ─────────────────────────
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ─── ROUTES ───────────────────────────────────
 app.use("/api/products", productRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/suppliers", supplierRoutes);
+<<<<<<< HEAD
+app.use("/api/users",userRoutes)
+app.use("/api/dashboard", dashboardRoutes); 
+app.use("/api/aiInsights",aiInsights)
+=======
 app.use("/api/sales", saleRoutes);
+app.use("/api/order", orderRoutes);
+>>>>>>> abc9e3e88e4ae3af64da628f0685d5d49ac4ca3c
+
 
 // ─── ERROR HANDLER ────────────────────────────
 app.use((req, res, next) => {

@@ -7,9 +7,8 @@ const categorySchema = new mongoose.Schema(
       required: [true, "Category name is required"],
       unique: true,
       trim: true,
-      maxlength: [50, "Category name cannot exceed 50 characters"],
+      maxlength: [20, "Category name cannot exceed 20 characters"],
     },
-
     isActive: {
       type: Boolean,
       default: true,
@@ -18,15 +17,14 @@ const categorySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ─── VIRTUAL: count products in this category (used in getCategories()) ───────
 categorySchema.virtual("productCount", {
   ref: "Product",
   localField: "_id",
   foreignField: "category",
-  count: true, // returns a number instead of full documents
+  count: true,
 });
 
-categorySchema.set("toJSON", { virtuals: true });
-categorySchema.set("toObject", { virtuals: true });
+categorySchema.set("toJSON", { virtuals: true, versionKey: false });
+categorySchema.set("toObject", { virtuals: true, versionKey: false });
 
 export default mongoose.model("Category", categorySchema);

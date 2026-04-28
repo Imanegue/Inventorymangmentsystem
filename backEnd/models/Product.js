@@ -184,4 +184,6 @@ productSchema.index({ isActive: 1 });
 productSchema.set("toJSON", { virtuals: true });
 productSchema.set("toObject", { virtuals: true });
 
+
+
 export default mongoose.model("Product", productSchema); 
