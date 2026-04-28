@@ -27,4 +27,7 @@ categorySchema.virtual("productCount", {
 categorySchema.set("toJSON", { virtuals: true, versionKey: false });
 categorySchema.set("toObject", { virtuals: true, versionKey: false });
 
-export default mongoose.model("Category", categorySchema);
+const Category =
+  mongoose.models.Category || mongoose.model("Category", categorySchema);
+
+export default Category;

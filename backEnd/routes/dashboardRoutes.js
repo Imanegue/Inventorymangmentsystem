@@ -4,7 +4,7 @@ import {
   getTotalProducts,
   getTotalSales,
   getLowStockCount,
-} from "../controllers/dashboardControllers.js";
+} from "../controllers/dashboardController.js";
 
 const router = express.Router();
 

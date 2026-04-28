@@ -76,7 +76,9 @@ const saleSchema = new mongoose.Schema(
 // ─── INDEX: speed up date-range and status queries ───────────────────────────
 saleSchema.index({ createdAt: -1 });
 saleSchema.index({ status: 1 });
-saleSchema.index({ saleNumber: 1 });
 saleSchema.index({ "items.product": 1 }); // for AI: top products queries
 
-export default mongoose.model("Sale", saleSchema);
+const Sale =
+  mongoose.models.Sale || mongoose.model("Sale", saleSchema);
+
+export default Sale;

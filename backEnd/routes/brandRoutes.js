@@ -6,7 +6,7 @@ import {
   updateBrand,
   deleteBrand,
   restoreBrand,
-} from "../controllers/brandControllers.js";
+} from "../controllers/brandController.js";
 import { upload } from "../config/multer.js";
 
 const router = express.Router();

@@ -6,7 +6,7 @@ import {
   updateProduct,
   restoreProduct,
   deleteProduct,
-} from "../controllers/productControllers.js";
+} from "../controllers/productController.js";
 import { upload } from "../config/multer.js";
 
 
